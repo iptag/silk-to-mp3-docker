@@ -1,7 +1,8 @@
 # SLK to MP3 Converter API
 
 这个Docker容器提供了一个API服务，可以将Silk v3 (.slk)音频文件转换为MP3格式。它支持直接文件上传和base64编码的音频数据。
-源代码参考[kn007/silk-v3-decoder](https://github.com/kn007/silk-v3-decoder)，这里只是将原作者的功能使用了docker进行实现，方便直接通过api调用
+源代码参考[kn007/silk-v3-decoder](https://github.com/kn007/silk-v3-decoder)，这里只是将原作者的功能使用了docker进行实现，方便直接通过api调用。
+原作者那里说明了可以转换为其他格式，这没有做过测试，有需要的可以自行尝试。
 
 ## 前提条件
 
