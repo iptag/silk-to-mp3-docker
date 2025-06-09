@@ -25,11 +25,6 @@
 ```bash
 docker build -t silk-converter .
 ```
-## 创建本地映射目录
-
-mkdir /root/silk
-然后将api_server.py复制到silk目录中
-这一步的目的是如果需要修改api_server.py相同功能，可以直接编辑，然后重启容器即可
 
 ## 运行容器
 
