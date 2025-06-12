@@ -139,6 +139,9 @@ def convert_file():
         # 从原始文件名中提取文件名（不含扩展名），并构造输出文件名
         original_filename_without_ext = os.path.splitext(os.path.basename(file.filename))[0]
         output_filename = f"{original_filename_without_ext}.{output_format}"
+        
+        # 检查文件是否为wav格式，且需要转换为amr格式
+        is_wav_to_amr = file.filename.lower().endswith('.wav') and output_format.lower() == 'amr'
     
     # 检查请求的JSON体中是否包含'base64_data'字段
     elif request.is_json and 'base64_data' in request.json:
@@ -158,6 +161,9 @@ def convert_file():
         output_format = request.json.get('format', 'mp3')
         # 为Base64输入构造一个通用的输出文件名
         output_filename = f"audio.{output_format}"
+        
+        # 对于base64输入，我们假设它不是wav格式
+        is_wav_to_amr = False
     else:
         # 如果请求中既没有文件也没有Base64数据，返回错误
         return jsonify({"error": "请求中未提供文件(file)或Base64数据(base64_data)"}), 400
@@ -166,26 +172,52 @@ def convert_file():
     converted_file_path = os.path.splitext(input_path)[0] + f".{output_format}"
     
     try:
-        # 调用外部shell脚本(silk.sh)来执行实际的音频格式转换
-        subprocess.run([
-            "sh",
-            "/app/silk.sh",
-            input_path,
-            output_format
-        ], check=True)
-        
-        # 检查转换后的文件是否真的存在
-        if not os.path.exists(converted_file_path):
-            # 如果文件不存在，说明转换过程中发生了未捕获的错误
-            return jsonify({"error": "转换失败，输出文件未生成"}), 500
+        # 如果是WAV到AMR的转换，使用ffmpeg并返回base64编码
+        if is_wav_to_amr:
+            # 使用ffmpeg将wav转换为amr
+            amr_output_path = os.path.splitext(input_path)[0] + ".amr"
+            subprocess.run([
+                "ffmpeg",
+                "-i", input_path,
+                "-ar", "8000",
+                "-ab", "12.2k",
+                amr_output_path
+            ], check=True)
             
-        # 如果转换成功，使用send_file将文件作为附件发送给客户端
-        return send_file(
-            converted_file_path,
-            as_attachment=True,  # 作为附件下载
-            download_name=output_filename,  # 指定下载时的文件名
-            mimetype=f'audio/{output_format}'  # 设置正确的MIME类型
-        )
+            # 读取AMR文件并进行base64编码
+            with open(amr_output_path, "rb") as audio_file:
+                amr_data = audio_file.read()
+            base64_encoded = base64.b64encode(amr_data).decode("utf-8")
+            
+            # 清理临时文件
+            if os.path.exists(input_path):
+                os.remove(input_path)
+            if os.path.exists(amr_output_path):
+                os.remove(amr_output_path)
+                
+            # 返回base64编码的AMR数据
+            return jsonify({"amr_base64": base64_encoded})
+        else:
+            # 调用外部shell脚本(silk.sh)来执行实际的音频格式转换
+            subprocess.run([
+                "sh",
+                "/app/silk.sh",
+                input_path,
+                output_format
+            ], check=True)
+            
+            # 检查转换后的文件是否真的存在
+            if not os.path.exists(converted_file_path):
+                # 如果文件不存在，说明转换过程中发生了未捕获的错误
+                return jsonify({"error": "转换失败，输出文件未生成"}), 500
+                
+            # 如果转换成功，使用send_file将文件作为附件发送给客户端
+            return send_file(
+                converted_file_path,
+                as_attachment=True,  # 作为附件下载
+                download_name=output_filename,  # 指定下载时的文件名
+                mimetype=f'audio/{output_format}'  # 设置正确的MIME类型
+            )
     except subprocess.CalledProcessError as e:
         # 如果转换脚本执行失败，返回详细错误信息
         return jsonify({"error": f"转换过程失败: {str(e)}"}), 500
