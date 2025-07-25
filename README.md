@@ -19,7 +19,6 @@
 - **SILK解码器整合**：基于[kn007/silk-v3-decoder](https://github.com/kn007/silk-v3-decoder)
 - **Flask API服务**：提供RESTful API接口
 - **自动填充修复**：优化处理畸形Base64数据
-- **Python + Shell脚本**：结合Python和Shell脚本实现完整功能
 - **Distroless容器**：使用轻量级distroless容器减小镜像体积
 
 ## 快速开始
