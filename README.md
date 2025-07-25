@@ -30,7 +30,7 @@
 
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/iptag/silk-to-mp3-docker.git
 cd silk-to-mp3-docker
 
 # 构建镜像
