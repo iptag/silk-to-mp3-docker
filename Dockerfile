@@ -5,11 +5,11 @@ FROM ubuntu:20.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 安装编译依赖
 RUN apt-get update && apt-get install -y \
     make gcc g++ \
-    wget build-essential yasm cmake libtool \
+    wget build-essential coreutils yasm cmake libtool \
     libopencore-amrnb-dev libopencore-amrwb-dev \
+    libmp3lame-dev \
     python3 python3-pip python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,6 +24,7 @@ RUN wget -q https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz && \
         --enable-nonfree \
         --enable-libopencore-amrnb \
         --enable-libopencore-amrwb \
+        --enable-libmp3lame \
         --disable-doc \
         --disable-htmlpages \
         --disable-manpages \
@@ -48,27 +49,25 @@ RUN make && make decoder && strip decoder
 # 安装Python依赖到指定目录
 RUN pip3 install --target /app/deps flask
 
+# 确保二进制文件有执行权限
+RUN chmod +x /opt/ffmpeg/bin/ffmpeg /app/silk/decoder
+
 # =============================================
 # Stage 2: 运行时镜像 - 使用distroless
+# (此阶段保持不变)
 # =============================================
 FROM gcr.io/distroless/python3-debian11
 
-# 设置Python路径
 ENV PYTHONPATH=/app/deps
-
-# 拷贝必要文件
-COPY --from=builder /opt/ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
-COPY --from=builder /app/silk/decoder /app/silk/decoder
-COPY --from=builder /app/deps /app/deps
-
-# 拷贝应用文件
-COPY api_server.py /app/
-COPY silk.sh /app/
 
 WORKDIR /app
 
-# 暴露端口
+# 使用 --chown 将所有拷贝的文件和目录的所有者设置为 nonroot
+COPY --from=builder --chown=nonroot:nonroot /app/deps /app/deps
+COPY --from=builder /opt/ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=builder /app/silk/decoder /app/silk/decoder
+COPY --chown=nonroot:nonroot api_server.py .
+
 EXPOSE 8321
 
-# 启动命令
 CMD ["api_server.py"]
