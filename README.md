@@ -103,7 +103,6 @@ curl -F "file=@/path/to/audio.wav" \
 silk-to-mp3-docker/
 ├── Dockerfile          # 多阶段Docker构建文件
 ├── api_server.py       # Flask API服务器
-├── silk.sh             # 音频转换Shell脚本
 ├── silk/               # SILK解码器源码
 │   ├── Makefile
 │   └── src/
@@ -116,7 +115,7 @@ silk-to-mp3-docker/
 
 - 基于Flask框架
 - 端口: 8321
-- 临时目录: /app/uploads 和 /app/converted
+- 临时目录: /app/uploads
 - 支持健康检查: GET /health
 - 主要转换端点: POST /convert
 
