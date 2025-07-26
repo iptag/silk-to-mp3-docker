@@ -107,6 +107,7 @@ def convert_file():
             if not os.path.exists(pcm_path) or os.path.getsize(pcm_path) == 0:
                 raise ValueError(f"Decoder failed to produce a valid PCM file from {input_path}")
 
+            # 2. 调用 ffmpeg 将 pcm 文件转换为目标格式
             ffmpeg_command = [
                 FFMPEG_PATH, '-y', '-f', 's16le', '-ar', '24000', 
                 '-ac', '1', '-i', pcm_path, converted_file_path
