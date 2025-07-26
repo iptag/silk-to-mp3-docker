@@ -101,8 +101,12 @@ def convert_file():
             return jsonify({"amr_base64": base64_encoded})
         else:
             decode_command = [DECODER_PATH, input_path, pcm_path]
+            print(f"Executing decode: {' '.join(decode_command)}")
             subprocess.run(decode_command, check=True, capture_output=True)
-            
+
+            if not os.path.exists(pcm_path) or os.path.getsize(pcm_path) == 0:
+                raise ValueError(f"Decoder failed to produce a valid PCM file from {input_path}")
+
             ffmpeg_command = [
                 FFMPEG_PATH, '-y', '-f', 's16le', '-ar', '24000', 
                 '-ac', '1', '-i', pcm_path, converted_file_path
