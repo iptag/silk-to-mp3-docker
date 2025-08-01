@@ -8,7 +8,7 @@
 - ✅ **多格式音频转换**：支持MP3、AMR、WAV等多种音频格式之间的转换
 - ✅ **双输入模式**：支持文件上传和Base64编码数据输入
 - ✅ **智能格式处理**：自动检测SILK文件头，处理非标准格式
-- ✅ **特殊格式转换**：WAV到AMR转换支持返回Base64编码数据
+- ✅ **特殊格式转换**：WAV或MP3到AMR转换支持返回Base64编码数据
 - ✅ **自动清理**：转换完成后自动清理临时文件
 - ✅ **健康监控**：提供服务状态监控端点
 - ✅ **高效容器化**：多阶段Docker构建，优化镜像体积
@@ -79,12 +79,18 @@ curl -X POST \
      -o converted.mp3
 ```
 
-### 3. WAV转AMR特殊转换
+### 3. WAV/MP3转AMR特殊转换
 
-当将WAV文件转换为AMR格式时，API将返回Base64编码的AMR数据：
+当将WAV文件或者MP3文件转换为AMR格式时，API将返回Base64编码的AMR数据：
 
 ```bash
 curl -F "file=@/path/to/audio.wav" \
+     -F "format=amr" \
+     http://localhost:8321/convert
+```
+
+```bash
+curl -F "file=@/path/to/audio.mp3" \
      -F "format=amr" \
      http://localhost:8321/convert
 ```
