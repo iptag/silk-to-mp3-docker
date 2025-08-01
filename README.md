@@ -23,6 +23,14 @@
 
 ## 快速开始
 
+### 直接使用
+```bash
+docker run -d \
+  --name audio-converter-api \
+  -p 8321:8321 \
+  iptag/audio-converter:latest
+```
+
 ### 1. 构建Docker镜像
 
 项目使用多阶段构建，自动编译SILK解码器和FFmpeg：
