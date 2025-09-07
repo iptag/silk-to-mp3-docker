@@ -5,10 +5,10 @@
 ## 核心功能
 
 - ✅ **SILK v3 音频解码**：将微信语音等SILK v3格式音频转换为常见音频格式
-- ✅ **多格式音频转换**：支持MP3、AMR、WAV等多种音频格式之间的转换
+- ✅ **多格式音频转换**：支持MP3、WAV、SILK等多种音频格式之间的转换
 - ✅ **双输入模式**：支持文件上传和Base64编码数据输入
 - ✅ **智能格式处理**：自动检测SILK文件头，处理非标准格式
-- ✅ **特殊格式转换**：WAV或MP3到AMR转换，返回Base64编码数据
+- ✅ **特殊格式转换**：WAV或MP3到SILK转换，返回Base64编码数据
 - ✅ **自动清理**：转换完成后自动清理临时文件
 - ✅ **健康监控**：提供服务状态监控端点
 - ✅ **高效容器化**：多阶段Docker构建，优化镜像体积
@@ -87,26 +87,27 @@ curl -X POST \
      -o converted.mp3
 ```
 
-### 3. WAV/MP3转AMR特殊转换
+### 3. WAV/MP3转换SILK
 
-当将WAV文件或者MP3文件转换为AMR格式时，API将返回Base64编码的AMR数据：
+当将WAV文件或者MP3文件转换为SILK格式时，API将返回Base64编码的SILK音频数据以及原始WAV/MP3音频的时长(向上取整的整数)：
 
 ```bash
 curl -F "file=@/path/to/audio.wav" \
-     -F "format=amr" \
+     -F "format=silk" \
      http://localhost:8321/convert
 ```
 
 ```bash
 curl -F "file=@/path/to/audio.mp3" \
-     -F "format=amr" \
+     -F "format=silk" \
      http://localhost:8321/convert
 ```
 
 响应示例：
 ```json
 {
-  "amr_base64": "IyFBTVIKLNEaCgq8A..."
+  "duration": 10,
+  "silk_base64": "IyFTSUxLX1Yz...（此处为很长的Base64编码字符串）...AAA="
 }
 ```
 
