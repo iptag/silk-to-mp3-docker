@@ -10,7 +10,6 @@
 - ✅ **智能格式处理**：自动检测SILK文件头，处理非标准格式
 - ✅ **特殊格式转换**：WAV或MP3到SILK转换，返回Base64编码数据及原始音频时长
 - ✅ **自动清理**：转换完成后自动清理临时文件
-- ✅ **健康监控**：提供服务状态监控端点
 - ✅ **高效容器化**：多阶段Docker构建，优化镜像体积
 
 ## 技术特点
@@ -52,14 +51,6 @@ docker run -d \
   --name audio-converter-api \
   -p 8321:8321 \
   audio-converter:latest
-```
-
-### 3. 验证服务
-
-```bash
-# 健康检查
-curl http://localhost:8321/health
-# 返回: {"status": "ok"}
 ```
 
 ## API使用方法
@@ -130,7 +121,6 @@ silk-to-mp3-docker/
 - 基于Flask框架
 - 端口: 8321
 - 临时目录: /app/uploads
-- 支持健康检查: GET /health
 - 主要转换端点: POST /convert
 
 ### 音频处理
