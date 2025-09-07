@@ -6,6 +6,7 @@ import subprocess
 import uuid
 import base64
 import re
+import math
 import traceback
 from flask import Flask, request, send_file, jsonify
 
@@ -19,6 +20,7 @@ UPLOAD_DIR = '/app/uploads'
 DECODER_PATH = '/app/silk/decoder'
 ENCODER_PATH = '/app/silk/encoder'
 FFMPEG_PATH = '/usr/local/bin/ffmpeg'
+FFPROBE_PATH = '/usr/local/bin/ffprobe'
 
 # 创建临时目录
 os.makedirs(UPLOAD_DIR, exist_ok=True)
