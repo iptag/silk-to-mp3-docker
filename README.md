@@ -71,7 +71,7 @@ curl -F "file=@audio.wav" -F "format=oga" http://localhost:8321/convert
 curl -F "file=@audio.mp3" -F "format=oga" http://localhost:8321/convert
 
 # OGA转MP3
-curl -F "file=@audio.oga" -F "format=mp3" http://localhost:8321/convert
+curl -F "file=@audio.oga" -F "format=mp3" http://localhost:8321/convert --output converted.mp3
 ```
 
 #### SILK格式转换
