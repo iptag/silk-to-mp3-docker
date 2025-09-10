@@ -62,13 +62,13 @@ docker run -d \
 #### 基础格式转换
 ```bash
 # WAV转MP3
-curl -F "file=@audio.wav" -F "format=mp3" http://localhost:8321/convert
+curl -F "file=@audio.wav" -F "format=mp3" http://localhost:8321/convert --output converted.mp3
 
 # WAV转OGA
-curl -F "file=@audio.wav" -F "format=oga" http://localhost:8321/convert
+curl -F "file=@audio.wav" -F "format=oga" http://localhost:8321/convert --output converted.oga
 
 # MP3转OGA
-curl -F "file=@audio.mp3" -F "format=oga" http://localhost:8321/convert
+curl -F "file=@audio.mp3" -F "format=oga" http://localhost:8321/convert  --output converted.oga
 
 # OGA转MP3
 curl -F "file=@audio.oga" -F "format=mp3" http://localhost:8321/convert --output converted.mp3
@@ -77,7 +77,7 @@ curl -F "file=@audio.oga" -F "format=mp3" http://localhost:8321/convert --output
 #### SILK格式转换
 ```bash
 # SILK转MP3
-curl -F "file=@voice.silk" -F "format=mp3" http://localhost:8321/convert
+curl -F "file=@voice.silk" -F "format=mp3" http://localhost:8321/convert --output converted.mp3
 
 # WAV转SILK (返回Base64)
 curl -F "file=@audio.wav" -F "format=silk" http://localhost:8321/convert
