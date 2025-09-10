@@ -83,6 +83,14 @@ curl -F "file=@voice.silk" -F "format=mp3" http://localhost:8321/convert
 curl -F "file=@audio.wav" -F "format=silk" http://localhost:8321/convert
 ```
 
+# WAV转SILK后返回的json数据格式为
+```json
+{
+  "base64": "xxxxxx",
+  "duration": 18
+}
+```
+
 ### Base64数据转换
 
 ```bash
