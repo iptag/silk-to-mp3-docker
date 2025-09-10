@@ -5,7 +5,7 @@
 ## 🎵 核心功能
 
 - ✅ **SILK v3 专业支持**：使用优化的编码器，完全兼容微信语音格式
-- ✅ **多格式转换**：支持WAV、MP3、OGG、SILK之间的相互转换
+- ✅ **多格式转换**：支持WAV、MP3、OGA、SILK之间的相互转换
 - ✅ **智能转换路径**：自动选择最优转换方式（直接转换 vs PCM中转）
 - ✅ **双输入模式**：支持文件上传和Base64编码数据输入
 - ✅ **高质量输出**：针对不同格式优化的编码参数
@@ -17,24 +17,24 @@
 ### 输入格式
 - **WAV**: 无损音频格式
 - **MP3**: MPEG-1 Audio Layer III
-- **OGG**: Ogg Vorbis格式
+- **OGA**: Oga Vorbis格式
 - **SILK**: 微信语音格式 (.silk, .slk)
 
 ### 输出格式
 - **MP3**: 128kbps, LAME编码器
-- **OGG**: 质量等级5, Vorbis编码器
+- **OGA**: 质量等级5, Vorbis编码器
 - **SILK**: 24kHz, 24kbps, 单声道
 
 ## 🔄 转换路径
 
 ### 直接转换（高效）
-- MP3 ↔ OGG
+- MP3 ↔ OGA
 - WAV → MP3
-- WAV → OGG
+- WAV → OGA
 
 ### 通过PCM中转
-- SILK → MP3/OGG
-- WAV/MP3/OGG → SILK
+- SILK → MP3/OGA
+- WAV/MP3/OGA → SILK
 
 ## 🚀 快速开始
 
@@ -64,14 +64,14 @@ docker run -d \
 # WAV转MP3
 curl -F "file=@audio.wav" -F "format=mp3" http://localhost:8321/convert
 
-# WAV转OGG
-curl -F "file=@audio.wav" -F "format=ogg" http://localhost:8321/convert
+# WAV转OGA
+curl -F "file=@audio.wav" -F "format=oga" http://localhost:8321/convert
 
-# MP3转OGG
-curl -F "file=@audio.mp3" -F "format=ogg" http://localhost:8321/convert
+# MP3转OGA
+curl -F "file=@audio.mp3" -F "format=oga" http://localhost:8321/convert
 
-# OGG转MP3
-curl -F "file=@audio.ogg" -F "format=mp3" http://localhost:8321/convert
+# OGA转MP3
+curl -F "file=@audio.oga" -F "format=mp3" http://localhost:8321/convert
 ```
 
 #### SILK格式转换
@@ -142,7 +142,7 @@ silk-to-mp3-docker/
 
 ### 编码参数
 - **MP3**: 128kbps, LAME编码器
-- **OGG**: 质量等级5, Vorbis编码器
+- **OGA**: 质量等级5, Vorbis编码器
 - **SILK**: 24kHz, 24kbps, 单声道
 
 ## 🧪 测试
@@ -150,10 +150,10 @@ silk-to-mp3-docker/
 运行测试脚本：
 ```bash
 # Linux/Mac
-./test_ogg_conversion.sh
+./test_oga_conversion.sh
 
 # 或手动测试
-curl -F "file=@test.wav" -F "format=ogg" http://localhost:8321/convert
+curl -F "file=@test.wav" -F "format=oga" http://localhost:8321/convert
 ```
 
 ## ⚠️ 注意事项
