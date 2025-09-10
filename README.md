@@ -1,149 +1,160 @@
-# 音频格式转换 API 服务
+# 多格式音频转换服务 (Audio Converter API)
 
-这个Docker容器提供了一个强大的音频格式转换API服务，专注于SILK v3音频解码和多格式音频转换。
+一个基于Docker的高性能音频转换服务，专门优化了SILK格式处理，支持多种音频格式之间的智能转换。
 
-## 核心功能
+## 🎵 核心功能
 
-- ✅ **SILK v3 音频解码**：将微信语音等SILK v3格式音频转换为常见音频格式
-- ✅ **多格式音频转换**：支持MP3、WAV、SILK等多种音频格式之间的转换
+- ✅ **SILK v3 专业支持**：使用优化的编码器，完全兼容微信语音格式
+- ✅ **多格式转换**：支持WAV、MP3、OGG、SILK之间的相互转换
+- ✅ **智能转换路径**：自动选择最优转换方式（直接转换 vs PCM中转）
 - ✅ **双输入模式**：支持文件上传和Base64编码数据输入
-- ✅ **智能格式处理**：自动检测SILK文件头，处理非标准格式
-- ✅ **特殊格式转换**：WAV或MP3到SILK转换，返回Base64编码数据及原始音频时长
+- ✅ **高质量输出**：针对不同格式优化的编码参数
 - ✅ **自动清理**：转换完成后自动清理临时文件
-- ✅ **高效容器化**：多阶段Docker构建，优化镜像体积，编译完成后的镜像大小为135MB
+- ✅ **容器化部署**：多阶段Docker构建，优化镜像体积
 
-## 技术特点
+## 📋 支持的格式
 
-- **FFmpeg静态编译**：将FFmpeg静态编译到镜像中，减少依赖
-- **SILK解码器整合**：基于[kn007/silk-v3-decoder](https://github.com/kn007/silk-v3-decoder)
-- **Flask API服务**：提供RESTful API接口
-- **自动填充修复**：优化处理畸形Base64数据
-- **Distroless容器**：使用轻量级distroless容器减小镜像体积
+### 输入格式
+- **WAV**: 无损音频格式
+- **MP3**: MPEG-1 Audio Layer III
+- **OGG**: Ogg Vorbis格式
+- **SILK**: 微信语音格式 (.silk, .slk)
 
-## 快速开始
+### 输出格式
+- **MP3**: 128kbps, LAME编码器
+- **OGG**: 质量等级5, Vorbis编码器
+- **SILK**: 24kHz, 24kbps, 单声道
 
-### 直接使用
+## 🔄 转换路径
+
+### 直接转换（高效）
+- MP3 ↔ OGG
+- WAV → MP3
+- WAV → OGG
+
+### 通过PCM中转
+- SILK → MP3/OGG
+- WAV/MP3/OGG → SILK
+
+## 🚀 快速开始
+
+### 构建镜像
+
 ```bash
-docker run -d \
-  --name audio-converter-api \
-  -p 8321:8321 \
-  iptag/audio-converter:latest
-```
-
-### 1. 构建Docker镜像
-
-项目使用多阶段构建，自动编译SILK解码器和FFmpeg：
-
-```bash
-# 克隆项目
-git clone https://github.com/iptag/silk-to-mp3-docker.git
-cd silk-to-mp3-docker
-
 # 构建镜像
 docker build -t audio-converter .
 ```
 
-### 2. 运行容器
+### 运行容器
 
 ```bash
 # 启动API服务
 docker run -d \
-  --name audio-converter-api \
+  --name audio-converter \
   -p 8321:8321 \
-  audio-converter:latest
+  audio-converter
 ```
 
-## API使用方法
+## 📡 API使用方法
 
-### 1. 通过文件上传转换音频
+### 文件上传转换
 
-上传音频文件并指定输出格式：
-
+#### 基础格式转换
 ```bash
-curl -F "file=@/path/to/audio.slk" \
-     -F "format=mp3" \
-     http://localhost:8321/convert \
-     -o converted.mp3
+# WAV转MP3
+curl -F "file=@audio.wav" -F "format=mp3" http://localhost:8321/convert
+
+# WAV转OGG
+curl -F "file=@audio.wav" -F "format=ogg" http://localhost:8321/convert
+
+# MP3转OGG
+curl -F "file=@audio.mp3" -F "format=ogg" http://localhost:8321/convert
+
+# OGG转MP3
+curl -F "file=@audio.ogg" -F "format=mp3" http://localhost:8321/convert
 ```
 
-### 2. 通过Base64编码数据转换
+#### SILK格式转换
+```bash
+# SILK转MP3
+curl -F "file=@voice.silk" -F "format=mp3" http://localhost:8321/convert
 
-发送包含Base64编码的音频数据：
+# WAV转SILK (返回Base64)
+curl -F "file=@audio.wav" -F "format=silk" http://localhost:8321/convert
+```
+
+### Base64数据转换
 
 ```bash
 curl -X POST \
      -H "Content-Type: application/json" \
      -d '{"base64_data": "AiMhU0lMS19WMwwApyt096...", "format": "mp3"}' \
-     http://localhost:8321/convert \
-     -o converted.mp3
-```
-
-### 3. WAV/MP3转换SILK
-
-当将WAV文件或者MP3文件转换为SILK格式时，API将返回Base64编码的SILK音频数据以及原始WAV/MP3音频的时长(向上取整的整数)：
-
-```bash
-curl -F "file=@/path/to/audio.wav" \
-     -F "format=silk" \
      http://localhost:8321/convert
 ```
 
-```bash
-curl -F "file=@/path/to/audio.mp3" \
-     -F "format=silk" \
-     http://localhost:8321/convert
-```
+### 响应格式
 
-响应示例：
+#### 成功响应
 ```json
 {
-  "duration": 10,
-  "silk_base64": "IyFTSUxLX1Yz...（此处为很长的Base64编码字符串）...AAA="
+  "filename": "audio.mp3",
+  "base64_data": "base64_encoded_audio_data",
+  "duration_seconds": 18
 }
 ```
 
-## 项目结构
+#### 错误响应
+```json
+{
+  "error": "错误描述"
+}
+```
 
+## 🛠️ 技术架构
+
+### 核心组件
+- **FFmpeg**: 音频格式转换和处理
+- **SILK SDK**: 微信SILK格式编解码
+- **Flask**: Web API框架
+- **Docker**: 容器化部署
+
+### 项目结构
 ```
 silk-to-mp3-docker/
-├── Dockerfile          # 多阶段Docker构建文件
-├── api_server.py       # Flask API服务器
-├── silk/               # SILK解码器源码
+├── Dockerfile              # 多阶段Docker构建
+├── api_server.py           # Flask API服务器
+├── custom_encoder.cpp      # 优化的SILK编码器
+├── silk/                   # SILK SDK
 │   ├── Makefile
+│   ├── interface/
 │   └── src/
-└── README.md           # 项目文档
+├── README.md
+└── CHANGELOG.md
 ```
 
-## 技术细节
+### 编码参数
+- **MP3**: 128kbps, LAME编码器
+- **OGG**: 质量等级5, Vorbis编码器
+- **SILK**: 24kHz, 24kbps, 单声道
 
-### API服务器
+## 🧪 测试
 
-- 基于Flask框架
-- 端口: 8321
-- 临时目录: /app/uploads
-- 主要转换端点: POST /convert
+运行测试脚本：
+```bash
+# Linux/Mac
+./test_ogg_conversion.sh
 
-### 音频处理
+# 或手动测试
+curl -F "file=@test.wav" -F "format=ogg" http://localhost:8321/convert
+```
 
-- SILK文件头自动检测: "#!SILK_V3" 和 "\x02#!SILK_V3"
-- Base64输入自动修复填充
-- 支持批量转换
-- 使用FFmpeg进行格式转换
+## ⚠️ 注意事项
 
-### Docker镜像
-
-- 基础镜像: gcr.io/distroless/python3-debian11
-- 多阶段构建减小镜像体积
-- 第一阶段: 编译FFmpeg和SILK解码器
-- 第二阶段: 仅复制必要的二进制文件和依赖
-
-## 注意事项
-
-- API仅转换音频内容，不处理元数据
+- SILK格式专为语音优化，采样率固定为24kHz
+- 所有音频在转换为SILK时会自动转为单声道
 - 临时文件在转换完成后自动清理
-- 不支持超大文件，可能会导致内存不足
-- 为确保最佳转换质量，建议提供高质量源文件
+- 建议使用高质量源文件以获得最佳转换效果
 
-## 开发与贡献
+## 📄 许可证
 
-源代码参考[kn007/silk-v3-decoder](https://github.com/kn007/silk-v3-decoder)，在原作者功能基础上增加了完整的REST API接口、多格式支持和Docker容器化部署。 
+MIT License
