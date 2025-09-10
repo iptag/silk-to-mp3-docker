@@ -178,11 +178,11 @@ def convert_file():
                     subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True)
 
                 else:
-                    # 其他格式之间的转换 (包括 ogg <-> mp3)
+                    # 其他格式之间的转换 (包括 oga <-> mp3, oga是telegram用到的语音消息格式)
                     ffmpeg_command = [FFMPEG_PATH, '-y', '-i', input_path]
 
                     # 根据输出格式添加特定参数
-                    if output_format.lower() == 'ogg':
+                    if output_format.lower() == 'oga':
                         ffmpeg_command.extend(['-c:a', 'libvorbis', '-q:a', '5'])
                     elif output_format.lower() == 'mp3':
                         ffmpeg_command.extend(['-c:a', 'libmp3lame', '-b:a', '128k'])
@@ -257,3 +257,4 @@ def convert_file():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8321, debug=False)
+
