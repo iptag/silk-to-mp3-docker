@@ -7,6 +7,7 @@ import uuid
 import base64
 import re
 import math
+import struct
 import traceback
 from flask import Flask, request, send_file, jsonify
 
@@ -85,66 +86,114 @@ def convert_file():
             pcm_path = os.path.splitext(input_path)[0] + ".pcm"
 
             if output_format.lower() == 'silk':
-                # 方向: WAV/MP3 -> SILK
-                # 步骤0: 使用ffprobe获取音频时长
+                # ==================== 使用我们自己的可靠编码器 ====================
+                # ... (ffprobe 部分保持不变) ...
                 ffprobe_command = [
-                    FFPROBE_PATH,
-                    '-v', 'error',
+                    FFPROBE_PATH, '-v', 'error',
                     '-show_entries', 'format=duration',
-                    '-of', 'default=noprint_wrappers=1:nokey=1',
-                    input_path
+                    '-of', 'default=noprint_wrappers=1:nokey=1', input_path
                 ]
-                print(f"Executing ffprobe: {' '.join(ffprobe_command)}")
                 result = subprocess.run(ffprobe_command, check=True, capture_output=True, text=True)
-                duration_float = float(result.stdout.strip())
-                duration_seconds = math.ceil(duration_float) # 向上取整
-                # 步骤1: 使用ffmpeg将输入文件转换为PCM
+                duration_seconds = math.ceil(float(result.stdout.strip()))
+
+                target_sample_rate = "24000"
+
+                # 步骤1: FFmpeg -> PCM file
                 ffmpeg_to_pcm_command = [
                     FFMPEG_PATH, '-y', '-i', input_path,
-                    '-f', 's16le', '-ar', '24000', '-ac', '1', pcm_path
+                    '-f', 's16le', '-ar', target_sample_rate, '-ac', '1', pcm_path
                 ]
-                print(f"Executing ffmpeg to pcm: {' '.join(ffmpeg_to_pcm_command)}")
-                subprocess.run(ffmpeg_to_pcm_command, check=True, capture_output=True)
+                subprocess.run(ffmpeg_to_pcm_command, check=True, capture_output=True, text=True)
 
                 if not os.path.exists(pcm_path) or os.path.getsize(pcm_path) == 0:
                     raise ValueError(f"FFMPEG failed to produce a valid PCM file from {input_path}")
 
-                # 步骤2: 使用encoder将PCM转换为SILK
-                encoder_command = [ENCODER_PATH, pcm_path, converted_file_path]
-                print(f"Executing encode: {' '.join(encoder_command)}")
-                subprocess.run(encoder_command, check=True, capture_output=True)
+                # 步骤2: 调用修复后的 custom_encoder
+                # 用法: custom_encoder <sample_rate> <input.pcm> <output.silk>
+                encoder_command = [
+                    ENCODER_PATH,
+                    target_sample_rate,
+                    pcm_path,
+                    converted_file_path
+                ]
+                print(f"Executing SILK encoder: {' '.join(encoder_command)}")
 
-                # 读取生成的silk文件，进行Base64编码，并以JSON格式返回
+                # Enhanced error handling for encoder
+                try:
+                    process = subprocess.run(encoder_command, check=True, capture_output=True, text=True)
+                    if process.stderr:
+                        print(f"Encoder output: {process.stderr}")
+                except subprocess.CalledProcessError as e:
+                    print(f"Custom Encoder failed with return code {e.returncode}")
+                    print(f"Custom Encoder STDOUT: {e.stdout}")
+                    print(f"SILK encoding failed: {e.stderr}")
+                    raise ValueError(f"SILK encoding failed: {e.stderr}")
+                
+                # ... (后续的返回 JSON 部分保持不变) ...
                 if not os.path.exists(converted_file_path):
                     return jsonify({"error": "转换失败，SILK文件未生成"}), 500
 
                 with open(converted_file_path, "rb") as audio_file:
                     silk_data = audio_file.read()
+
+                # ==================== VALIDATION: Check for excessive zero bytes ====================
+                if len(silk_data) == 0:
+                    return jsonify({"error": "转换失败，生成的SILK文件为空"}), 500
+
+                # Check if file starts with proper SILK header
+                if not (silk_data.startswith(b'#!SILK_V3') or silk_data.startswith(b'\x02#!SILK_V3')):
+                    print(f"Warning: SILK file may not have proper header. First 20 bytes: {silk_data[:20]}")
+
+                # Check for excessive zero bytes (more than 50% zeros indicates a problem)
+                zero_count = silk_data.count(b'\x00')
+                zero_percentage = (zero_count / len(silk_data)) * 100
+                print(f"SILK file stats: size={len(silk_data)} bytes, zero_bytes={zero_count} ({zero_percentage:.1f}%)")
+
+                if zero_percentage > 50:
+                    print(f"Warning: SILK file contains {zero_percentage:.1f}% zero bytes, which may indicate encoding issues")
+                # ===================================================================================
+
+                base_64_encoded = base64.b64encode(silk_data).decode("utf-8")
                 
-                base64_encoded = base64.b64encode(silk_data).decode("utf-8")
-                
-                return jsonify({"silk_base64": base64_encoded, "duration": duration_seconds})
+                return jsonify({"base64": base_64_encoded, "duration": duration_seconds})
 
             else:
-                # 原有逻辑: SILK -> 其他格式 (MP3/WAV等)
-                # 步骤1: 使用decoder将SILK转换为PCM
-                decode_command = [DECODER_PATH, input_path, pcm_path]
-                print(f"Executing decode: {' '.join(decode_command)}")
-                subprocess.run(decode_command, check=True, capture_output=True)
-                
-                if not os.path.exists(pcm_path) or os.path.getsize(pcm_path) == 0:
-                    raise ValueError(f"Decoder failed to produce a valid PCM file from {input_path}")
+                # 检查输入文件格式
+                input_ext = os.path.splitext(file.filename)[1].lower()
 
-                # 步骤2: 使用ffmpeg将PCM转换为目标格式
-                ffmpeg_command = [
-                    FFMPEG_PATH, '-y', '-f', 's16le', '-ar', '24000',
-                    '-ac', '1', '-i', pcm_path, converted_file_path
-                ]
-                print(f"Executing ffmpeg from pcm: {' '.join(ffmpeg_command)}")
-                subprocess.run(ffmpeg_command, check=True, capture_output=True)
+                if input_ext == '.silk' or input_ext == '.slk':
+                    # SILK -> 其他格式
+                    decode_command = [DECODER_PATH, input_path, pcm_path]
+                    print(f"Executing decode: {' '.join(decode_command)}")
+                    subprocess.run(decode_command, check=True, capture_output=True, text=True)
+
+                    if not os.path.exists(pcm_path) or os.path.getsize(pcm_path) == 0:
+                        raise ValueError(f"Decoder failed to produce a valid PCM file from {input_path}")
+
+                    ffmpeg_command = [
+                        FFMPEG_PATH, '-y', '-f', 's16le', '-ar', '24000',
+                        '-ac', '1', '-i', pcm_path, converted_file_path
+                    ]
+                    print(f"Executing ffmpeg from pcm: {' '.join(ffmpeg_command)}")
+                    subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True)
+
+                else:
+                    # 其他格式之间的转换 (包括 ogg <-> mp3)
+                    ffmpeg_command = [FFMPEG_PATH, '-y', '-i', input_path]
+
+                    # 根据输出格式添加特定参数
+                    if output_format.lower() == 'ogg':
+                        ffmpeg_command.extend(['-c:a', 'libvorbis', '-q:a', '5'])
+                    elif output_format.lower() == 'mp3':
+                        ffmpeg_command.extend(['-c:a', 'libmp3lame', '-b:a', '128k'])
+
+                    ffmpeg_command.append(converted_file_path)
+
+                    print(f"Executing direct conversion: {' '.join(ffmpeg_command)}")
+                    subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True)
 
         elif request.is_json and 'base64_data' in request.json:
-            # 此处逻辑保持不变：Base64 (SILK) -> 其他格式
+            # Base64 -> 其他格式的逻辑保持不变
             base64_data = request.json['base64_data']
             unique_id = str(uuid.uuid4())
             input_path = os.path.join(UPLOAD_DIR, f"{unique_id}.slk")
@@ -156,26 +205,23 @@ def convert_file():
             converted_file_path = os.path.splitext(input_path)[0] + f".{output_format}"
             pcm_path = os.path.splitext(input_path)[0] + ".pcm"
             
-            # 解码 SILK -> PCM
             decode_command = [DECODER_PATH, input_path, pcm_path]
             print(f"Executing decode: {' '.join(decode_command)}")
-            subprocess.run(decode_command, check=True, capture_output=True)
+            subprocess.run(decode_command, check=True, capture_output=True, text=True)
 
             if not os.path.exists(pcm_path) or os.path.getsize(pcm_path) == 0:
                 raise ValueError(f"Decoder failed to produce a valid PCM file from {input_path}")
             
-            # 编码 PCM -> 目标格式
             ffmpeg_command = [
                 FFMPEG_PATH, '-y', '-f', 's16le', '-ar', '24000',
                 '-ac', '1', '-i', pcm_path, converted_file_path
             ]
             print(f"Executing ffmpeg from pcm: {' '.join(ffmpeg_command)}")
-            subprocess.run(ffmpeg_command, check=True, capture_output=True)
+            subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True)
         
         else:
             return jsonify({"error": "请求中未提供文件(file)或Base64数据(base64_data)"}), 400
         
-        # 只有 SILK -> 其他格式 的转换会走到这里
         if not os.path.exists(converted_file_path):
             return jsonify({"error": "转换失败，输出文件未生成"}), 500
         
@@ -195,13 +241,13 @@ def convert_file():
         if isinstance(e, subprocess.CalledProcessError):
             error_details["details"] = {
                 "command": ' '.join(e.cmd),
-                "stdout": e.stdout.decode() if e.stdout else 'N/A',
-                "stderr": e.stderr.decode() if e.stderr else 'N/A'
+                "stdout": e.stdout if isinstance(e.stdout, str) else e.stdout.decode(errors='ignore'),
+                "stderr": e.stderr if isinstance(e.stderr, str) else e.stderr.decode(errors='ignore')
             }
         return jsonify(error_details), 500
         
     finally:
-        # 清理临时文件
+        # 清理所有临时文件
         if input_path and os.path.exists(input_path):
             os.remove(input_path)
         if converted_file_path and os.path.exists(converted_file_path):
