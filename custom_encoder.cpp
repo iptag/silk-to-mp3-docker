@@ -56,6 +56,8 @@ int main( int argc, char* argv[] )
     static const char silk_header[] = "\x02#!SILK_V3";
     fwrite( silk_header, sizeof( char ), 10, fout );
 
+    // ==================== CORRECTED ENCODER INITIALIZATION ====================
+
     // 1. GET ENCODER SIZE
     ret = SKP_Silk_SDK_Get_Encoder_Size( &encSizeBytes );
     if( ret ) {
@@ -85,11 +87,7 @@ int main( int argc, char* argv[] )
     encControl.useInBandFEC          = useInBandFEC;
     encControl.useDTX                = useDTX;
 
-    // 4. DEBUG: Print configuration before initialization
-    //fprintf( stderr, "=== CUSTOM ENCODER V2.0 ACTIVE ===\n" );
-    //fprintf( stderr, "Encoder config: API_fs=%d, max_internal_fs=%d, packet_size=%d, bitrate=%d\n",
-             encControl.API_sampleRate, encControl.maxInternalSampleRate,
-             encControl.packetSize, encControl.bitRate );
+    // Configure encoder parameters
 
     // 5. INITIALIZE THE ENCODER WITH CONFIGURED PARAMETERS
     ret = SKP_Silk_SDK_InitEncoder( psEnc, &encStatus );
@@ -100,8 +98,9 @@ int main( int argc, char* argv[] )
         free(psEnc);
         return 1;
     }
-    //fprintf( stderr, "Encoder initialized successfully\n" );
-    //fprintf( stderr, "=== STARTING NODE-SILK COMPATIBLE ENCODING ===\n" );
+
+    // ====================================================================
+
 
     // ==================== NODE-SILK COMPATIBLE ENCODING LOOP ====================
     SKP_int32 frameSizeReadFromFile_ms = 20;  // Same as node-silk
@@ -109,6 +108,8 @@ int main( int argc, char* argv[] )
 
     // Initialize payload buffer
     memset( payload, 0, sizeof( payload ) );
+
+
 
     while( 1 ) {
         /* Read input (exactly like node-silk) */
