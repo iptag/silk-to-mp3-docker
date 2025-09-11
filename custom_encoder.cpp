@@ -7,6 +7,8 @@
 #define MAX_INPUT_FRAMES        5
 #define FRAME_LENGTH_MS         20
 #define MAX_API_FS_KHZ          48   // Same as node-silk
+#define SILK_HEADER_SIZE        10
+#define DEFAULT_MAX_INTERNAL_FS_HZ 24000
 
 int main( int argc, char* argv[] )
 {
@@ -24,9 +26,9 @@ int main( int argc, char* argv[] )
     SKP_int16 nBytes;
     SKP_uint8 payload[ MAX_BYTES_PER_FRAME * MAX_INPUT_FRAMES ];
     SKP_int16 in[ ( FRAME_LENGTH_MS * MAX_API_FS_KHZ ) * MAX_INPUT_FRAMES ];
-    FILE      *fin, *fout;
+    FILE      *fin = NULL, *fout = NULL;
     SKP_int32 encSizeBytes;
-    void      *psEnc;
+    void      *psEnc = NULL;
 
     /* default settings (matching node-silk) */
     SKP_int32 packetSize_ms = 20;
@@ -36,7 +38,6 @@ int main( int argc, char* argv[] )
     SKP_int32 useDTX = 0;
     SKP_int32 packetLoss_perc = 0;
 
-    SKP_SILK_SDK_EncControlStruct encStatus = { 0 };  // Struct for status of encoder
     SKP_SILK_SDK_EncControlStruct encControl = { 0 }; // Struct for input to encoder
 
     fin = fopen( fin_name, "rb" );
@@ -54,7 +55,7 @@ int main( int argc, char* argv[] )
 
     /* Add Silk header (exactly like node-silk) */
     static const char silk_header[] = "\x02#!SILK_V3";
-    fwrite( silk_header, sizeof( char ), 10, fout );
+    fwrite( silk_header, sizeof( char ), SILK_HEADER_SIZE, fout );
 
     // ==================== CORRECTED ENCODER INITIALIZATION ====================
 
@@ -62,19 +63,19 @@ int main( int argc, char* argv[] )
     ret = SKP_Silk_SDK_Get_Encoder_Size( &encSizeBytes );
     if( ret ) {
         fprintf( stderr, "SKP_Silk_SDK_Get_Encoder_Size returned %d\n", ret );
-        fclose(fin);
-        fclose(fout);
-        return 1;
+        goto cleanup;
     }
+    
     psEnc = malloc( encSizeBytes );
+    if ( psEnc == NULL ) {
+        fprintf( stderr, "Error: could not allocate memory for encoder\n" );
+        goto cleanup;
+    }
 
     // 2. SET CONFIGURATION PARAMETERS (like node-silk)
-    SKP_int32 max_internal_fs_Hz = 0;
-    if (max_internal_fs_Hz == 0) {
-        max_internal_fs_Hz = 24000;
-        if (API_fs_Hz < max_internal_fs_Hz) {
-            max_internal_fs_Hz = API_fs_Hz;
-        }
+    SKP_int32 max_internal_fs_Hz = DEFAULT_MAX_INTERNAL_FS_HZ;
+    if (API_fs_Hz < max_internal_fs_Hz) {
+        max_internal_fs_Hz = API_fs_Hz;
     }
 
     // Configure encControl for encoding calls (exactly like node-silk)
@@ -87,29 +88,18 @@ int main( int argc, char* argv[] )
     encControl.useInBandFEC          = useInBandFEC;
     encControl.useDTX                = useDTX;
 
-    // Configure encoder parameters
-
-    // 5. INITIALIZE THE ENCODER WITH CONFIGURED PARAMETERS
-    ret = SKP_Silk_SDK_InitEncoder( psEnc, &encStatus );
+    // 3. INITIALIZE THE ENCODER WITH CONFIGURED PARAMETERS
+    ret = SKP_Silk_SDK_InitEncoder( psEnc, &encControl );
     if( ret ) {
         fprintf( stderr, "SKP_Silk_SDK_InitEncoder returned %d\n", ret );
-        fclose(fin);
-        fclose(fout);
-        free(psEnc);
-        return 1;
+        goto cleanup;
     }
 
     // ====================================================================
 
-
     // ==================== NODE-SILK COMPATIBLE ENCODING LOOP ====================
     SKP_int32 frameSizeReadFromFile_ms = 20;  // Same as node-silk
     SKP_int32 smplsSinceLastPacket = 0;
-
-    // Initialize payload buffer
-    memset( payload, 0, sizeof( payload ) );
-
-
 
     while( 1 ) {
         /* Read input (exactly like node-silk) */
@@ -118,18 +108,19 @@ int main( int argc, char* argv[] )
         // Read exactly counter samples (not bytes)
         size_t samples_read = fread( in, sizeof(SKP_int16), counter, fin );
 
+        if( samples_read == 0 ) {
+            break;  // End of file
+        }
+        
         if( samples_read < counter ) {
-            if( samples_read == 0 ) {
-                break;  // End of file
-            }
-            // Handle partial read (like node-silk)
+            // Handle partial read (like node-silk) - pad with zeros
             memset( &in[samples_read], 0x00, (counter - samples_read) * sizeof(SKP_int16) );
-            counter = samples_read;  // Update counter to actual samples read
+            // Keep counter unchanged for proper encoding calculations
         }
 
 #ifdef _SYSTEM_IS_BIG_ENDIAN
         // Handle endianness (like node-silk)
-        for( int i = 0; i < counter; i++ ) {
+        for( size_t i = 0; i < counter; i++ ) {
             SKP_int16 tmp = in[i];
             SKP_uint8* p1 = (SKP_uint8*)&in[i];
             SKP_uint8* p2 = (SKP_uint8*)&tmp;
@@ -141,13 +132,17 @@ int main( int argc, char* argv[] )
         /* max payload size (like node-silk) */
         nBytes = MAX_BYTES_PER_FRAME * MAX_INPUT_FRAMES;
 
-        /* Silk Encoder (exactly like node-silk - no error checking!) */
-        SKP_Silk_SDK_Encode( psEnc, &encControl, in, (SKP_int16)counter, payload, &nBytes );
+        /* Silk Encoder with error checking */
+        ret = SKP_Silk_SDK_Encode( psEnc, &encControl, in, (SKP_int16)counter, payload, &nBytes );
+        if( ret ) {
+            fprintf( stderr, "SKP_Silk_SDK_Encode returned %d\n", ret );
+            goto cleanup;
+        }
 
         /* Get packet size (like node-silk) */
-        SKP_int32 current_packetSize_ms = (SKP_int)((1000 * (SKP_int32)encControl.packetSize) / encControl.API_sampleRate);
+        SKP_int32 current_packetSize_ms = (1000 * encControl.packetSize) / encControl.API_sampleRate;
 
-        smplsSinceLastPacket += (SKP_int)counter;
+        smplsSinceLastPacket += (SKP_int32)counter;
         if (((1000 * smplsSinceLastPacket) / API_fs_Hz) == current_packetSize_ms) {
             /* Write payload size (like node-silk) */
             fwrite( &nBytes, sizeof( SKP_int16 ), 1, fout );
@@ -159,9 +154,16 @@ int main( int argc, char* argv[] )
     }
     // =================================================================================
 
-    fclose( fin );
-    fclose( fout );
-    free( psEnc );
-
+    // Success cleanup
+    if ( fin ) fclose( fin );
+    if ( fout ) fclose( fout );
+    if ( psEnc ) free( psEnc );
     return 0;
+
+cleanup:
+    // Error cleanup
+    if ( fin ) fclose( fin );
+    if ( fout ) fclose( fout );
+    if ( psEnc ) free( psEnc );
+    return 1;
 }
