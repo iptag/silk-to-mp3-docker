@@ -40,6 +40,11 @@ int main( int argc, char* argv[] )
 
     SKP_SILK_SDK_EncControlStruct encControl = { 0 }; // Struct for input to encoder
 
+    // Declare variables that might be used after goto (to avoid "crosses initialization" error)
+    SKP_int32 max_internal_fs_Hz = DEFAULT_MAX_INTERNAL_FS_HZ;
+    SKP_int32 frameSizeReadFromFile_ms = 20;  // Same as node-silk
+    SKP_int32 smplsSinceLastPacket = 0;
+
     fin = fopen( fin_name, "rb" );
     if ( fin == NULL ) {
         fprintf( stderr, "Error: could not open input file %s\n", fin_name );
@@ -73,7 +78,6 @@ int main( int argc, char* argv[] )
     }
 
     // 2. SET CONFIGURATION PARAMETERS (like node-silk)
-    SKP_int32 max_internal_fs_Hz = DEFAULT_MAX_INTERNAL_FS_HZ;
     if (API_fs_Hz < max_internal_fs_Hz) {
         max_internal_fs_Hz = API_fs_Hz;
     }
@@ -98,8 +102,6 @@ int main( int argc, char* argv[] )
     // ====================================================================
 
     // ==================== NODE-SILK COMPATIBLE ENCODING LOOP ====================
-    SKP_int32 frameSizeReadFromFile_ms = 20;  // Same as node-silk
-    SKP_int32 smplsSinceLastPacket = 0;
 
     while( 1 ) {
         /* Read input (exactly like node-silk) */
