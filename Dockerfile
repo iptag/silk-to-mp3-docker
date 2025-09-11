@@ -96,4 +96,8 @@ RUN chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe /app/silk_encoder/enco
 COPY api_server.py .
 
 EXPOSE 8321
+<<<<<<< HEAD
 CMD ["python3", "api_server.py"]
+=======
+CMD ["python3", "api_server.py"]
+>>>>>>> bf4d5aee54b2a943c284df1786acc8ac5bb53266
