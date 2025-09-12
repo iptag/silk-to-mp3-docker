@@ -44,7 +44,7 @@ RUN make clean || true
 RUN make lib
 
 WORKDIR /app
-# Build our custom_encoder with correct linking
+# Build custom_encoder with correct linking
 RUN echo "Building custom_encoder..." && \
     g++ -std=c++11 -O3 -Wall custom_encoder.cpp \
     -I/app/silk_encoder/interface -I/app/silk_encoder/src \
@@ -96,8 +96,4 @@ RUN chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe /app/silk_encoder/enco
 COPY api_server.py .
 
 EXPOSE 8321
-<<<<<<< HEAD
 CMD ["python3", "api_server.py"]
-=======
-CMD ["python3", "api_server.py"]
->>>>>>> bf4d5aee54b2a943c284df1786acc8ac5bb53266
