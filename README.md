@@ -104,7 +104,7 @@ docker run -d \
   --name silk-converter \
   -p 8321:8321 \
   --restart unless-stopped \
-  iptag/silk-to-mp3-converter:latest
+  iptag/audio-converter:latest
 ```
 
 ### 方式二：Docker构建部署
