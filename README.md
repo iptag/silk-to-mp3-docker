@@ -97,7 +97,17 @@ Base64 → 任意格式       解码→对应转换路径      📦 灵活处理
 
 ## 🚀 快速部署
 
-### 方式一：Docker构建部署
+### 方式一：直接拉取Docker镜像
+
+```bash
+docker run -d \
+  --name silk-converter \
+  -p 8321:8321 \
+  --restart unless-stopped \
+  iptag/silk-to-mp3-converter:latest
+```
+
+### 方式二：Docker构建部署
 
 ```bash
 # 1. 克隆项目
@@ -118,7 +128,7 @@ docker run -d \
 curl http://localhost:8321/health
 ```
 
-### 方式二：Docker Compose部署
+### 方式三：Docker Compose部署
 
 ```yaml
 # docker-compose.yml
@@ -786,11 +796,7 @@ MIT License - 详见 [LICENSE](LICENSE) 文件
 ## 🙏 致谢
 
 - [Skype SILK SDK](https://github.com/kn007/silk-v3-decoder) - 提供SILK编解码核心功能
-- [FFmpeg](https://ffmpeg.org/) - 强大的音频视频处理工具
-- [Flask](https://flask.palletsprojects.com/) - 轻量级Web框架
 
 ---
 
 **项目维护**: 如有问题或建议，请提交Issue或Pull Request
-
-**更新日期**: 2025-09-22
