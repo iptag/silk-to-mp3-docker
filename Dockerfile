@@ -97,3 +97,4 @@ COPY api_server.py .
 
 EXPOSE 8321
 CMD ["python3", "api_server.py"]
+
